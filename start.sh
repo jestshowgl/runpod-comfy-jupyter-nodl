@@ -57,10 +57,11 @@ fi
 # ВАЖНО: запускаем как root, иначе часто нет прав на volume -> нельзя удалять/терминал
 # Root в контейнере = нормально для RunPod, но НЕ выключай токен.
 #
-# FIX для RunPod proxy / xterm.js:
-# - отключаем websocket compression (часто ломает ввод в терминале через proxy)
-# - включаем websocket ping, чтобы соединение не "замирало"
-# - trust_xheaders + allow_remote_access для нормальной работы за reverse proxy
+# FIX для RunPod proxy:
+# - разрешаем origin для websocket (иначе "Blocking Cross Origin WebSocket Attempt" и 403 на /terminals/websocket)
+# - отключаем xsrf check (часто даёт 403 на events/subscribe и ws через reverse proxy)
+# - доверяем xheaders от прокси
+# - websocket compression off + ping, чтобы не зависало
 TORNADO_SETTINGS="{'websocket_compression_options': None, 'websocket_ping_interval': 25, 'websocket_ping_timeout': 120}"
 
 echo "[INFO] Starting JupyterLab on port $JUPYTER_PORT"
@@ -75,6 +76,9 @@ jupyter lab \
   --ServerApp.allow_remote_access=True \
   --ServerApp.trust_xheaders=True \
   --ServerApp.terminals_enabled=True \
+  --ServerApp.allow_origin="*" \
+  --ServerApp.allow_origin_pat=".*" \
+  --ServerApp.disable_check_xsrf=True \
   --ServerApp.tornado_settings="$TORNADO_SETTINGS" \
   >/tmp/jupyter.log 2>&1 &
 
